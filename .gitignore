@@ -1,0 +1,8 @@
+*~
+\.\#*
+\#*
+acceptance_tests/vendor
+build/
+*.bak
+.idea/
+
