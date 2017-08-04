@@ -2,6 +2,8 @@ import cv2
 import numpy as np
 import glob
 import pickle
+import matplotlib.pyplot as pl
+import matplotlib.image as mpimg
 
 images = glob.glob("camera_cal/calibration*.jpg")
 objpoints = []
@@ -23,8 +25,12 @@ ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.sh
 pickle.dump(mtx, open("mtx.p", "wb"))
 pickle.dump(dist, open("dist.p", "wb"))
 dst = cv2.undistort(img, mtx, dist, None, mtx)
-cv2.imshow("Undist", dst)
-cv2.waitKey()
+pl.figure()
+pl.imshow(dst)
+pl.figure()
+pl.imshow(img)
+pl.show()
+
 
 
 
