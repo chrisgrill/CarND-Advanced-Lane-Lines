@@ -5,20 +5,12 @@ import pickle
 import matplotlib.pyplot as pl
 import matplotlib.image as mpimg
 import platform
+from line import Line
+from lanefinder import LaneFinder
 
-
-def warp(img):
-    hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
-    s_channel = hls[:,:,2]
-    img_size = (hls.shape[1], hls.shape[0])
-    src = np.float32([[220,719],[1220,719],[750,480],[550,480]])
-    dst = np.float32([[240,719],[1040,719],[1040,300],[240,300]])
-    thresh = (90, 255)
-    binary = np.zeros_like(s_channel)
-    binary[(s_channel > thresh[0]) & (s_channel <= thresh[1])] = 1
-    transform_matrix = cv2.getPerspectiveTransform(src, dst)
-    return s_channel, cv2.warpPerspective(binary, transform_matrix, img_size), transform_matrix
-
+right_line = Line()
+left_line = Line()
+lf = LaneFinder()
 # Load camera calibration data
 mtx = pickle.load(open("mtx.p", "rb"))
 dist = pickle.load(open("dist.p", "rb"))
@@ -26,11 +18,9 @@ cap = cv2.VideoCapture("project_video.mp4")
 while(True):
     ret, img = cap.read()
     #img = cv2.imread("test_images/test4.jpg")
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = cv2.undistort(img, mtx, dist, None, mtx)
-    # pl.figure()
-    # pl.imshow(img)
-    s_channel, warped, transform_matrix = warp(img)
+    warped, transform_matrix = lf.warp(img)
     histogram = np.sum(warped[warped.shape[0]//2:,:], axis=0)
 
 
