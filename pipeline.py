@@ -17,18 +17,18 @@ def warp(img):
     binary = np.zeros_like(s_channel)
     binary[(s_channel > thresh[0]) & (s_channel <= thresh[1])] = 1
     transform_matrix = cv2.getPerspectiveTransform(src, dst)
-    return s_channel, cv2.warpPerspective(binary, transform_matrix, img_size)
+    return s_channel, cv2.warpPerspective(binary, transform_matrix, img_size), transform_matrix
 
 # Load camera calibration data
 mtx = pickle.load(open("mtx.p", "rb"))
 dist = pickle.load(open("dist.p", "rb"))
 
-img = cv2.imread("test_images/test6.jpg")
+img = cv2.imread("test_images/test3.jpg")
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 img = cv2.undistort(img, mtx, dist, None, mtx)
 pl.figure()
 pl.imshow(img)
-s_channel, warped = warp(img)
+s_channel, warped, transform_matrix = warp(img)
 histogram = np.sum(warped[warped.shape[0]//2:,:], axis=0)
 
 
@@ -109,6 +109,24 @@ pl.plot(left_fitx, ploty, color='yellow')
 pl.plot(right_fitx, ploty, color='yellow')
 pl.xlim(0, 1280)
 pl.ylim(720, 0)
+
+# Create an image to draw the lines on
+warp_zero = np.zeros_like(warped).astype(np.uint8)
+color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+
+# Recast the x and y points into usable format for cv2.fillPoly()
+pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+pts_right = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+pts = np.hstack((pts_left, pts_right))
+
+# Draw the lane onto the warped blank image
+cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
+
+# Warp the blank back to original image space using inverse perspective matrix (Minv)
+newwarp = cv2.warpPerspective(color_warp,np.linalg.inv(transform_matrix), (img.shape[1], img.shape[0]))
+# Combine the result with the original image
+result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
+pl.imshow(result)
 
 pl.figure()
 pl.plot(histogram)
