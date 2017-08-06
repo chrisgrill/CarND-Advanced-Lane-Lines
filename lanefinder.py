@@ -19,17 +19,20 @@ class LaneFinder:
         leftx_base = np.argmax(histogram[:midpoint])
         rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
+    def binary(self, img, thresh=(90, 255)):
+        binary = np.zeros_like(img)
+        binary[(img > thresh[0]) & (img <= thresh[1])] = 1
+        return binary
+
     def warp(self, img):
         hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
         s_channel = hls[:, :, 2]
         img_size = (hls.shape[1], hls.shape[0])
         src = np.float32([[220, 719], [1220, 719], [750, 480], [550, 480]])
         dst = np.float32([[240, 719], [1040, 719], [1040, 300], [240, 300]])
-        thresh = (90, 255)
-        binary = np.zeros_like(s_channel)
-        binary[(s_channel > thresh[0]) & (s_channel <= thresh[1])] = 1
+        binary = self.binary(s_channel)
         transform_matrix = cv2.getPerspectiveTransform(src, dst)
-        return cv2.warpPerspective(binary, transform_matrix, img_size), transform_matrix
+        return s_channel, cv2.warpPerspective(binary, transform_matrix, img_size), transform_matrix
 
     def window_search(self, img, nwindows=9):
         # Set height of windows
