@@ -87,7 +87,8 @@ while(True):
 
     # Fit a second order polynomial to each
     left_fit = np.polyfit(lefty, leftx, 2)
-    right_fit = np.polyfit(righty, rightx, 2)
+    if len(rightx) > 0:
+        right_fit = np.polyfit(righty, rightx, 2)
 
     ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
@@ -101,7 +102,21 @@ while(True):
     # pl.plot(right_fitx, ploty, color='yellow')
     # pl.xlim(0, 1280)
     # pl.ylim(720, 0)
+    ym_per_pix = 30 / 720  # meters per pixel in y dimension
+    xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
 
+    # Fit new polynomials to x,y in world space
+    y_eval = np.max(ploty)
+    left_fit_cr = np.polyfit(lefty * ym_per_pix, leftx * xm_per_pix, 2)
+    if len(rightx) > 0:
+        right_fit_cr = np.polyfit(righty * ym_per_pix, rightx * xm_per_pix, 2)
+    # Calculate the new radii of curvature
+    left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        2 * left_fit_cr[0])
+    right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
+        2 * right_fit_cr[0])
+    # Now our radius of curvature is in meters
+    print(left_curverad, 'm', right_curverad, 'm')
     # Create an image to draw the lines on
     warp_zero = np.zeros_like(warped).astype(np.uint8)
     color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
@@ -114,10 +129,13 @@ while(True):
     # Draw the lane onto the warped blank image
     cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
 
+
     # Warp the blank back to original image space using inverse perspective matrix (Minv)
     newwarp = cv2.warpPerspective(color_warp,np.linalg.inv(transform_matrix), (img.shape[1], img.shape[0]))
     # Combine the result with the original image
     result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    cv2.putText(out_img, ''.join([str(left_curverad), 'm, ', str(right_curverad), 'm']), (10, 700), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
     # pl.imshow(result)
     frames = np.concatenate((result,out_img), axis = 1)
     h, w = int(frames.shape[0]/2), int(frames.shape[1]/2)
