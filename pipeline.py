@@ -14,7 +14,7 @@ lf = LaneFinder()
 # Load camera calibration data
 mtx = pickle.load(open("mtx.p", "rb"))
 dist = pickle.load(open("dist.p", "rb"))
-cap = cv2.VideoCapture("project_video.mp4")
+cap = cv2.VideoCapture("shadow.mp4")
 while(True):
     ret, img = cap.read()
     # Undistort using camera calibration data
@@ -24,7 +24,6 @@ while(True):
     # Get histogram across center of image
     histogram = np.sum(warped[warped.shape[0]//2:,:], axis=0)
 
-
     # Create an output image to draw on and  visualize the result
     lf.out_img = np.dstack((warped, warped, warped))*255
     # Find the peak of the left and right halves of the histogram
@@ -32,13 +31,10 @@ while(True):
     midpoint = np.int(histogram.shape[0]/2)
     leftx_base = np.argmax(histogram[:midpoint])
     rightx_base = np.argmax(histogram[midpoint:]) + midpoint
-
     # Choose the number of sliding windows
     nwindows = 20
     # Set height of windows
     lf.window_height = np.int(warped.shape[0]/nwindows)
-    # Identify the x and y positions of all nonzero pixels in the image
-
     # Current positions to be updated for each window
     leftx_current = leftx_base
     rightx_current = rightx_base
@@ -46,14 +42,7 @@ while(True):
     lf.margin = 100
     # Set minimum number of pixels found to recenter window
     lf.minpix = 20
-    # Create empty lists to receive left and right lane pixel indices
-    #left_lane_inds = []
-    #right_lane_inds = []
-
-
-
-    #left_lane_inds = np.concatenate(left_lane_inds)
-    #right_lane_inds = np.concatenate(right_lane_inds)
+    # Get indices of lane pixels
     left_lane_inds, right_lane_inds = lf.window_search(warped, nwindows,leftx_base, rightx_base)
     # Extract left and right line pixel positions
     leftx = lf.nonzerox[left_lane_inds]
@@ -65,8 +54,6 @@ while(True):
     left_fit = np.polyfit(lefty, leftx, 2)
     if len(rightx) > 0:
         right_fit = np.polyfit(righty, rightx, 2)
-    else:
-        right_fit = np.polyfit(lefty, leftx, 2)
     ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
@@ -88,8 +75,6 @@ while(True):
     left_fit_cr = np.polyfit(lefty * ym_per_pix, leftx * xm_per_pix, 2)
     if len(rightx) > 0:
         right_fit_cr = np.polyfit(righty * ym_per_pix, rightx * xm_per_pix, 2)
-    else:
-        right_fit_cr = np.polyfit(lefty * ym_per_pix, leftx * xm_per_pix, 2)
     # Calculate the new radii of curvature
     left_curverad = ((1 + (2 * left_fit_cr[0] * y_eval * ym_per_pix + left_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
         2 * left_fit_cr[0])
@@ -110,24 +95,25 @@ while(True):
     cv2.fillPoly(color_warp, np.int_([pts]), (0,255, 0))
 
 
-    # Warp the blank back to original image space using inverse perspective matrix (Minv)
+    # Warp the blank back to original image space using inverse perspective matrix
     newwarp = cv2.warpPerspective(color_warp,np.linalg.inv(transform_matrix), (img.shape[1], img.shape[0]))
     # Combine the result with the original image
     result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
     font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(lf.out_img, ''.join([str(left_curverad), 'm, ', str(right_curverad), 'm']), (10, 700), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
     cv2.putText(lf.out_img, str(vehicle_pos) + 'm', (10, 40), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
-    # pl.imshow(result)
     frames = np.concatenate((result,lf.out_img), axis = 1)
-    #bottom = np.concatenate((s_channel,out_img), axis = 1)
-    #frames = np.concatenate((top,bottom), axis = 2)
     h, w = int(frames.shape[0]/2), int(frames.shape[1]/2)
     frames = cv2.resize(frames, (w, h))
     s_channel = cv2.resize(s_channel, (w, h))
     cv2.imshow("Schannel", s_channel)
     cv2.imshow("Frames", frames)
-    cv2.waitKey()
+    plot = cv2.plot.createPlot2d(np.double(histogram))
+    cv2.imshow("Histogram", plot)
+    #cv2.waitKey()
     if cv2.waitKey(1) & 0xFF == ord('q'):
+        pl.plot(np.double(histogram))
+        pl.show()
         break
 
 
