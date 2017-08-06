@@ -20,7 +20,7 @@ while(True):
     #img = cv2.imread("test_images/test4.jpg")
     #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = cv2.undistort(img, mtx, dist, None, mtx)
-    warped, transform_matrix = lf.warp(img)
+    s_channel, warped, transform_matrix = lf.warp(img)
     histogram = np.sum(warped[warped.shape[0]//2:,:], axis=0)
 
 
@@ -96,14 +96,15 @@ while(True):
 
     out_img[nonzeroy[left_lane_inds], nonzerox[left_lane_inds]] = [255, 0, 0]
     out_img[nonzeroy[right_lane_inds], nonzerox[right_lane_inds]] = [0, 0, 255]
-    # pl.figure()
-    # pl.imshow(out_img)
-    # pl.plot(left_fitx, ploty, color='yellow')
-    # pl.plot(right_fitx, ploty, color='yellow')
-    # pl.xlim(0, 1280)
-    # pl.ylim(720, 0)
+    left_pts = np.column_stack((left_fitx, ploty))
+    right_pts = np.column_stack((right_fitx, ploty))
+    cv2.polylines(out_img, [np.int32(left_pts)], 0,(0, 255, 255))
+    cv2.polylines(out_img, [np.int32(right_pts)], 0, (0, 255, 255))
+    lane_center = ((rightx_base - leftx_base)/2) + leftx_base
+    offset = lane_center - out_img.shape[0]
     ym_per_pix = 30 / 720  # meters per pixel in y dimension
     xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
+    vehicle_pos = offset * xm_per_pix
 
     # Fit new polynomials to x,y in world space
     y_eval = np.max(ploty)
@@ -136,11 +137,17 @@ while(True):
     result = cv2.addWeighted(img, 1, newwarp, 0.3, 0)
     font = cv2.FONT_HERSHEY_SIMPLEX
     cv2.putText(out_img, ''.join([str(left_curverad), 'm, ', str(right_curverad), 'm']), (10, 700), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
+    cv2.putText(out_img, str(vehicle_pos) + 'm', (10, 40), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
     # pl.imshow(result)
     frames = np.concatenate((result,out_img), axis = 1)
+    #bottom = np.concatenate((s_channel,out_img), axis = 1)
+    #frames = np.concatenate((top,bottom), axis = 2)
     h, w = int(frames.shape[0]/2), int(frames.shape[1]/2)
     frames = cv2.resize(frames, (w, h))
+    s_channel = cv2.resize(s_channel, (w, h))
+    cv2.imshow("Schannel", s_channel)
     cv2.imshow("Frames", frames)
+    cv2.waitKey()
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 

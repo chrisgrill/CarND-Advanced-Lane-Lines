@@ -12,14 +12,20 @@ class LaneFinder:
         self.right_fitx = None
         self.ploty = None
 
-    # Find the peak of the left and right halves of the histogram
-    # These will be the starting point for the left and right lines
+
     def set_base(self, histogram):
+        """Find the peak of the left and right halves of the histogram. These will be the starting point for the left
+        and right lines
+        :param histogram: Histogram from binary warped image
+        """
         midpoint = np.int(histogram.shape[0] / 2)
-        leftx_base = np.argmax(histogram[:midpoint])
-        rightx_base = np.argmax(histogram[midpoint:]) + midpoint
+        self.leftx_base = np.argmax(histogram[:midpoint])
+        self.rightx_base = np.argmax(histogram[midpoint:]) + midpoint
 
     def binary(self, img, thresh=(90, 255)):
+        """Return binary thresholded image.
+        :param img: Image to threshold
+        :param thresh: Threshold values"""
         binary = np.zeros_like(img)
         binary[(img > thresh[0]) & (img <= thresh[1])] = 1
         return binary
