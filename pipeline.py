@@ -15,6 +15,9 @@ lf = LaneFinder()
 mtx = pickle.load(open("mtx.p", "rb"))
 dist = pickle.load(open("dist.p", "rb"))
 cap = cv2.VideoCapture("shadow.mp4")
+frame_num = 0
+l_prev_fit = []
+r_prev_fit = []
 while(True):
     ret, img = cap.read()
     # Undistort using camera calibration data
@@ -39,11 +42,11 @@ while(True):
     leftx_current = leftx_base
     rightx_current = rightx_base
     # Set the width of the windows +/- margin
-    lf.margin = 100
+    lf.margin = 50
     # Set minimum number of pixels found to recenter window
     lf.minpix = 20
     # Get indices of lane pixels
-    left_lane_inds, right_lane_inds = lf.window_search(warped, nwindows,leftx_base, rightx_base)
+    left_lane_inds, right_lane_inds = lf.window_search(warped, nwindows,leftx_current, rightx_current)
     # Extract left and right line pixel positions
     leftx = lf.nonzerox[left_lane_inds]
     lefty = lf.nonzeroy[left_lane_inds]
@@ -51,9 +54,18 @@ while(True):
     righty = lf.nonzeroy[right_lane_inds]
 
     # Fit a second order polynomial to each
+    smoothing = 1.0
     left_fit = np.polyfit(lefty, leftx, 2)
+    if len(l_prev_fit) > 0:
+        left_fit = smoothing * left_fit + (1 - smoothing) * l_prev_fit
+        l_prev_fit = left_fit
+
     if len(rightx) > 0:
         right_fit = np.polyfit(righty, rightx, 2)
+        if len(r_prev_fit) > 0:
+            right_fit = smoothing * right_fit + (1 - smoothing) * r_prev_fit
+            r_prev_fit = right_fit
+
     ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
@@ -108,9 +120,9 @@ while(True):
     s_channel = cv2.resize(s_channel, (w, h))
     cv2.imshow("Schannel", s_channel)
     cv2.imshow("Frames", frames)
-    plot = cv2.plot.createPlot2d(np.double(histogram))
-    cv2.imshow("Histogram", plot)
-    #cv2.waitKey()
+    cv2.waitKey()
+    #cv2.imwrite("output_images/frame"+ str(frame_num).zfill(6) + ".jpg",frames)
+    frame_num = frame_num + 1
     if cv2.waitKey(1) & 0xFF == ord('q'):
         pl.plot(np.double(histogram))
         pl.show()
