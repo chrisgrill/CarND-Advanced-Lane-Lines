@@ -14,10 +14,13 @@ lf = LaneFinder()
 # Load camera calibration data
 mtx = pickle.load(open("mtx.p", "rb"))
 dist = pickle.load(open("dist.p", "rb"))
-cap = cv2.VideoCapture("shadow.mp4")
+cap = cv2.VideoCapture("project_video.mp4")
 frame_num = 0
 l_prev_fit = []
 r_prev_fit = []
+pre_left_fitx = []
+pre_right_fitx = []
+pre_ploty = []
 while(True):
     ret, img = cap.read()
     # Undistort using camera calibration data
@@ -42,11 +45,12 @@ while(True):
     leftx_current = leftx_base
     rightx_current = rightx_base
     # Set the width of the windows +/- margin
-    lf.margin = 50
+    lf.margin = 75
     # Set minimum number of pixels found to recenter window
     lf.minpix = 20
     # Get indices of lane pixels
     left_lane_inds, right_lane_inds = lf.window_search(warped, nwindows,leftx_current, rightx_current)
+
     # Extract left and right line pixel positions
     leftx = lf.nonzerox[left_lane_inds]
     lefty = lf.nonzeroy[left_lane_inds]
@@ -69,14 +73,31 @@ while(True):
     ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
     left_fitx = left_fit[0]*ploty**2 + left_fit[1]*ploty + left_fit[2]
     right_fitx = right_fit[0]*ploty**2 + right_fit[1]*ploty + right_fit[2]
+    # Sanity Checks
 
-    lf.out_img[lf.nonzeroy[left_lane_inds], lf.nonzerox[left_lane_inds]] = [255, 0, 0]
-    lf.out_img[lf.nonzeroy[right_lane_inds], lf.nonzerox[right_lane_inds]] = [0, 0, 255]
+    left_slope = (ploty[719]-ploty[0])/(left_fitx[719] - left_fitx[0])
+    right_slope = (ploty[719] - ploty[0]) / (right_fitx[719] - right_fitx[0])
+    lane_width = right_fitx[719] - left_fitx[719]
+    print(np.abs(left_slope - right_slope))
+    print(lane_width)
+    if (np.abs(left_slope - right_slope) > 5 and np.abs(left_slope - right_slope) < 100) or lane_width < 650:
+        left_fitx = pre_left_fitx
+        right_fitx = pre_right_fitx
+        ploty = pre_ploty
+    else:
+        pre_left_fitx = left_fitx
+        pre_right_fitx = right_fitx
+        pre_ploty = ploty
+
+
     left_pts = np.column_stack((left_fitx, ploty))
     right_pts = np.column_stack((right_fitx, ploty))
+    lane_center = ((np.argmin(right_pts[0]) - np.argmin(left_pts[0])) / 2) + leftx_base
+    lf.out_img[lf.nonzeroy[left_lane_inds], lf.nonzerox[left_lane_inds]] = [255, 0, 0]
+    lf.out_img[lf.nonzeroy[right_lane_inds], lf.nonzerox[right_lane_inds]] = [0, 0, 255]
     cv2.polylines(lf.out_img, [np.int32(left_pts)], 0,(0, 255, 255))
     cv2.polylines(lf.out_img, [np.int32(right_pts)], 0, (0, 255, 255))
-    lane_center = ((rightx_base - leftx_base)/2) + leftx_base
+
     offset = lane_center - lf.out_img.shape[0]
     ym_per_pix = 30 / 720  # meters per pixel in y dimension
     xm_per_pix = 3.7 / 700  # meters per pixel in x dimension
@@ -93,10 +114,11 @@ while(True):
     right_curverad = ((1 + (2 * right_fit_cr[0] * y_eval * ym_per_pix + right_fit_cr[1]) ** 2) ** 1.5) / np.absolute(
         2 * right_fit_cr[0])
     # Now our radius of curvature is in meters
-    print(left_curverad, 'm', right_curverad, 'm')
+    #print(left_curverad, 'm', right_curverad, 'm')
     # Create an image to draw the lines on
     warp_zero = np.zeros_like(warped).astype(np.uint8)
     color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+
 
     # Recast the x and y points into usable format for cv2.fillPoly()
     pts_left = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
@@ -120,8 +142,8 @@ while(True):
     s_channel = cv2.resize(s_channel, (w, h))
     cv2.imshow("Schannel", s_channel)
     cv2.imshow("Frames", frames)
-    cv2.waitKey()
-    #cv2.imwrite("output_images/frame"+ str(frame_num).zfill(6) + ".jpg",frames)
+    #cv2.waitKey()
+    cv2.imwrite("output_images/frame"+ str(frame_num).zfill(6) + ".jpg",frames)
     frame_num = frame_num + 1
     if cv2.waitKey(1) & 0xFF == ord('q'):
         pl.plot(np.double(histogram))

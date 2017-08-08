@@ -20,7 +20,8 @@ for fname in images:
         imgpoints.append(corners)
         objpoints.append(objp)
 
-img = cv2.imread("camera_cal/calibration19.jpg")
+img = cv2.cvtColor(cv2.imread("test_images/test1.jpg"), cv2.COLOR_BGR2RGB)
+gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 pickle.dump(mtx, open("mtx.p", "wb"))
 pickle.dump(dist, open("dist.p", "wb"))
