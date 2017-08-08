@@ -21,8 +21,13 @@ r_prev_fit = []
 pre_left_fitx = []
 pre_right_fitx = []
 pre_ploty = []
+pre_right_slope = 0
+pre_left_slope = 0
+pre_lane_width = 0
 while(True):
+    print("Frame: "+str(frame_num))
     ret, img = cap.read()
+    #img = cv2.imread("output_images/frame001040.jpg")
     # Undistort using camera calibration data
     img = cv2.undistort(img, mtx, dist, None, mtx)
     # Perform perspective transform and return binary image ideally containing lane lines
@@ -78,16 +83,21 @@ while(True):
     left_slope = (ploty[719]-ploty[0])/(left_fitx[719] - left_fitx[0])
     right_slope = (ploty[719] - ploty[0]) / (right_fitx[719] - right_fitx[0])
     lane_width = right_fitx[719] - left_fitx[719]
-    print(np.abs(left_slope - right_slope))
-    print(lane_width)
-    if (np.abs(left_slope - right_slope) > 5 and np.abs(left_slope - right_slope) < 100) or lane_width < 650:
+    print(np.abs(left_slope- right_slope))
+    if (np.abs(left_slope - right_slope) > 3 and np.abs(left_slope - right_slope) < 100) or \
+            (np.abs(lane_width-pre_lane_width) > 100 and pre_lane_width > 0)\
+            or (np.abs(pre_right_slope - right_slope) > 1 and pre_right_slope > 0):
         left_fitx = pre_left_fitx
         right_fitx = pre_right_fitx
         ploty = pre_ploty
+        pre_right_slope = right_slope
     else:
         pre_left_fitx = left_fitx
         pre_right_fitx = right_fitx
         pre_ploty = ploty
+        pre_left_slope = left_slope
+        pre_right_slope = right_slope
+        pre_lane_width = lane_width
 
 
     left_pts = np.column_stack((left_fitx, ploty))
@@ -143,7 +153,7 @@ while(True):
     cv2.imshow("Schannel", s_channel)
     cv2.imshow("Frames", frames)
     #cv2.waitKey()
-    cv2.imwrite("output_images/frame"+ str(frame_num).zfill(6) + ".jpg",frames)
+    #cv2.imwrite("output_images/frame"+ str(frame_num).zfill(6) + ".jpg",img)
     frame_num = frame_num + 1
     if cv2.waitKey(1) & 0xFF == ord('q'):
         pl.plot(np.double(histogram))
